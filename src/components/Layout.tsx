@@ -1,38 +1,33 @@
-import React from 'react'
-import { useAuth } from '../contexts/AuthContext'
-import { Heart, LogOut, User } from 'lucide-react'
+import React from 'react';
+import { Outlet, useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import { LogOut, Heart } from 'lucide-react';
+import type { UserRole, DiabetesType } from '../lib/database.types';
 
-interface LayoutProps {
-  children: React.ReactNode
-}
-
-export function Layout({ children }: LayoutProps) {
-  const { user, profile, signOut } = useAuth()
+// A correção principal está aqui: a função não recebe mais 'children' como prop
+export function Layout() {
+  const { profile, signOut } = useAuth();
+  const navigate = useNavigate();
 
   const handleSignOut = async () => {
-    try {
-      await signOut()
-    } catch (error) {
-      console.error('Error signing out:', error)
-    }
-  }
+    await signOut();
+    navigate('/login');
+  };
+  
+  const getRoleLabel = (role: UserRole) => (role === 'patient' ? 'Paciente' : 'Guardião');
 
-  const getRoleLabel = (role: string) => {
-    return role === 'patient' ? 'Paciente' : 'Guardião'
-  }
-
-  const getDiabetesTypeLabel = (type: string) => {
+  const getDiabetesTypeLabel = (type: DiabetesType) => {
     switch (type) {
-      case 'type1': return 'Tipo 1'
-      case 'type2': return 'Tipo 2'
-      case 'prediabetes': return 'Pré-diabetes'
-      default: return ''
+      case 'type1': return 'Tipo 1';
+      case 'type2': return 'Tipo 2';
+      case 'prediabetes': return 'Pré-diabetes';
+      default: return '';
     }
-  }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm border-b">
+      <header className="bg-white shadow-sm border-b sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-4">
@@ -51,28 +46,20 @@ export function Layout({ children }: LayoutProps) {
                 </div>
               )}
             </div>
-            
-            {user && profile && (
-              <div className="flex items-center space-x-4">
-                <div className="flex items-center text-gray-600">
-                  <User className="h-5 w-5 mr-2" />
-                  <span className="text-sm font-medium">{profile.full_name}</span>
-                </div>
-                <button
-                  onClick={handleSignOut}
-                  className="flex items-center text-gray-600 hover:text-gray-800 transition-colors p-2 rounded-lg hover:bg-gray-100"
-                >
-                  <LogOut className="h-5 w-5" />
-                </button>
-              </div>
-            )}
+            <div className="flex items-center space-x-4">
+              <span className="text-sm text-gray-600 hidden sm:block">
+                Olá, {profile?.full_name}
+              </span>
+              <button onClick={handleSignOut} className="p-2 rounded-lg hover:bg-gray-100" title="Sair">
+                <LogOut className="h-5 w-5 text-gray-600" />
+              </button>
+            </div>
           </div>
         </div>
       </header>
-
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {children}
+        <Outlet />
       </main>
     </div>
-  )
+  );
 }
