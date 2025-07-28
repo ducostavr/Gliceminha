@@ -1,28 +1,66 @@
 import React, { useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
-import { useGuardianPatients } from '../../hooks/useGuardianPatients'
-import { UserPlus, Link } from 'lucide-react'
+import { supabase } from '../../lib/supabase'
+import { Send } from 'lucide-react'
 
 export function LinkPatient() {
+  const { user, profile } = useAuth()
   const [invitationCode, setInvitationCode] = useState('')
   const [loading, setLoading] = useState(false)
+  const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
 
-  const { user } = useAuth()
-  const { linkPatient } = useGuardianPatients(user?.id || '')
+  if (!user || !profile) {
+    return (
+      <div className="card text-center text-gray-500">
+        Aguardando dados do usuário...
+      </div>
+    )
+  }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!user) return
-
+  const handleLink = async () => {
     setLoading(true)
+    setSuccess(false)
     setError('')
-    setSuccess('')
 
     try {
-      const patient = await linkPatient(invitationCode.toUpperCase())
-      setSuccess(`Paciente ${patient.full_name} vinculado com sucesso!`)
+      // 🔎 Busca o paciente pelo código de convite
+      const { data: patientData, error: patientError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('invitation_code', invitationCode)
+        .eq('role', 'patient')
+        .single()
+
+      if (patientError || !patientData) {
+        throw new Error('Código de convite inválido ou paciente não encontrado')
+      }
+
+      // 🚫 Evita duplicidade de vínculo
+      const { data: existingLink, error: linkCheckError } = await supabase
+        .from('guardian_patient_links')
+        .select('*')
+        .eq('guardian_id', user.id)
+        .eq('patient_id', patientData.user_id)
+        .maybeSingle()
+
+      if (existingLink) {
+        throw new Error('Você já está vinculado a este paciente')
+      }
+
+      // ✅ Cria o vínculo
+      const { error: linkError } = await supabase
+        .from('guardian_patient_links')
+        .insert({
+          guardian_id: user.id,
+          patient_id: patientData.user_id,
+        })
+
+      if (linkError) {
+        throw new Error('Erro ao vincular paciente')
+      }
+
+      setSuccess(true)
       setInvitationCode('')
     } catch (err: any) {
       setError(err.message)
@@ -32,65 +70,24 @@ export function LinkPatient() {
   }
 
   return (
-    <div className="card">
-      <div className="flex items-center mb-6">
-        <UserPlus className="h-6 w-6 text-blue-600 mr-2" />
-        <h2 className="text-xl font-semibold text-gray-900">Vincular Paciente</h2>
-      </div>
-
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-            {error}
-          </div>
-        )}
-
-        {success && (
-          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm">
-            {success}
-          </div>
-        )}
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Código de Convite
-          </label>
-          <input
-            type="text"
-            value={invitationCode}
-            onChange={(e) => setInvitationCode(e.target.value.toUpperCase())}
-            className="input-field font-mono text-lg tracking-wider"
-            placeholder="Ex: ABC12345"
-            maxLength={8}
-            required
-          />
-          <p className="mt-2 text-sm text-gray-500">
-            Digite o código de 8 caracteres fornecido pelo paciente
-          </p>
-        </div>
-
-        <button
-          type="submit"
-          disabled={loading || invitationCode.length !== 8}
-          className="btn-primary w-full py-3 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-        >
-          {loading ? (
-            'Vinculando...'
-          ) : (
-            <>
-              <Link className="h-5 w-5 mr-2" />
-              Vincular Paciente
-            </>
-          )}
-        </button>
-      </form>
-
-      <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <p className="text-sm text-blue-800">
-          <strong>Como funciona:</strong> Peça ao paciente para gerar um código de convite 
-          na seção "Compartilhar Dados\" e digite-o aqui para ter acesso aos dados dele.
-        </p>
-      </div>
+    <div className="card space-y-4">
+      <h2 className="text-xl font-semibold text-gray-900 flex items-center">
+        <Send className="h-6 w-6 text-blue-600 mr-2" />
+        Vincular Paciente
+      </h2>
+      <input
+        type="text"
+        placeholder="Código de convite do paciente"
+        value={invitationCode}
+        onChange={(e) => setInvitationCode(e.target.value.toUpperCase())}
+        className="input"
+        disabled={loading}
+      />
+      <button onClick={handleLink} className="btn-primary w-full" disabled={loading}>
+        {loading ? 'Vinculando...' : 'Vincular'}
+      </button>
+      {success && <p className="text-green-600 text-sm">Paciente vinculado com sucesso!</p>}
+      {error && <p className="text-red-600 text-sm">{error}</p>}
     </div>
   )
 }

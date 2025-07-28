@@ -15,6 +15,7 @@ export function AppContent() {
         <div className="text-center">
           <LoadingSpinner size="lg" />
           <p className="mt-4 text-gray-600">Carregando...</p>
+          
         </div>
       </div>
     )

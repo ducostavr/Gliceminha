@@ -8,7 +8,7 @@ import { ArrowLeft } from 'lucide-react'
 export function GuardianDashboard() {
   const [selectedPatient, setSelectedPatient] = useState<any>(null)
 
-  if (selectedPatient) {
+  if (selectedPatient && selectedPatient.user_id) {
     return (
       <div className="space-y-8 animate-fade-in">
         <div className="flex items-center">
@@ -62,7 +62,7 @@ export function GuardianDashboard() {
         <div>
           <LinkPatient />
         </div>
-        
+
         <div>
           <PatientsList onSelectPatient={setSelectedPatient} />
         </div>

@@ -7,6 +7,9 @@ import { useAuth } from '../contexts/AuthContext'
 
 export function PatientDashboard() {
   const { user } = useAuth()
+  if (!user?.id) {
+    return null // ou <LoadingScreen />
+  }
 
   return (
     <div className="space-y-8 animate-fade-in">

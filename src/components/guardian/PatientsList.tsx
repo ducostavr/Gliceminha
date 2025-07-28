@@ -9,9 +9,9 @@ interface PatientsListProps {
 
 export function PatientsList({ onSelectPatient }: PatientsListProps) {
   const { user } = useAuth()
-  const { patients, loading } = useGuardianPatients(user?.id || '')
+  const { patients, loading } = useGuardianPatients(user?.id)
 
-  const getDiabetesTypeLabel = (type: string) => {
+  const getDiabetesTypeLabel = (type?: string | null) => {
     switch (type) {
       case 'type1': return 'Tipo 1'
       case 'type2': return 'Tipo 2'
@@ -53,7 +53,7 @@ export function PatientsList({ onSelectPatient }: PatientsListProps) {
         <div className="space-y-3">
           {patients.map((patient) => (
             <div
-              key={patient.id}
+              key={patient.user_id}
               className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
             >
               <div className="flex items-center justify-between">
@@ -77,7 +77,7 @@ export function PatientsList({ onSelectPatient }: PatientsListProps) {
                     </div>
                   </div>
                 </div>
-                
+
                 <button
                   onClick={() => onSelectPatient(patient)}
                   className="btn-primary flex items-center"

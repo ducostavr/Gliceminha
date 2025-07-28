@@ -60,10 +60,14 @@ export function useGlucoseRecords(userId?: string) {
   }
 
   useEffect(() => {
-    if (userId) {
-      fetchRecords(userId)
-    }
-  }, [userId])
+  if (typeof userId === 'string' && userId.trim() !== '') {
+    fetchRecords(userId)
+  } else {
+    setRecords([])  // limpa registros
+    setLoading(false)
+  }
+}, [userId])
+
 
   return {
     records,

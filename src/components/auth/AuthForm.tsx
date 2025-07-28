@@ -79,6 +79,7 @@ export function AuthForm() {
             </label>
             <input
               type="email"
+              autoComplete="username"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="input-field"
@@ -93,13 +94,15 @@ export function AuthForm() {
             </label>
             <div className="relative">
               <input
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="input-field pr-10"
-                placeholder="Sua senha"
-                required
-              />
+  type={showPassword ? 'text' : 'password'}
+  value={password}
+  onChange={(e) => setPassword(e.target.value)}
+  name="password"
+  autoComplete="current-password"
+  className="input-field pr-10"
+  placeholder="Sua senha"
+  required
+/>
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}

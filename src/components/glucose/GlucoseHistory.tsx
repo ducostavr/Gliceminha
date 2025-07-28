@@ -1,3 +1,4 @@
+// ✅ GlucoseHistory.tsx corrigido
 import React from 'react'
 import { useGlucoseRecords } from '../../hooks/useGlucoseRecords'
 import { Clock, Activity, Syringe, TestTube, FileText } from 'lucide-react'
@@ -8,6 +9,8 @@ interface GlucoseHistoryProps {
 }
 
 export function GlucoseHistory({ userId, title = 'Histórico de Registros' }: GlucoseHistoryProps) {
+  if (!userId) return null;
+
   const { records, loading } = useGlucoseRecords(userId)
 
   const formatDate = (dateString: string) => {
@@ -83,7 +86,7 @@ export function GlucoseHistory({ userId, title = 'Histórico de Registros' }: Gl
                         {statusInfo.status}
                       </div>
                     </div>
-                    
+
                     <div className="flex-1">
                       <div className="flex items-center space-x-4 mb-2">
                         <span className="text-sm font-medium text-gray-900">
@@ -93,7 +96,7 @@ export function GlucoseHistory({ userId, title = 'Histórico de Registros' }: Gl
                           {formatTime(record.created_at)}
                         </span>
                       </div>
-                      
+
                       <div className="flex items-center space-x-4 text-sm text-gray-600">
                         {record.insulin_units && (
                           <div className="flex items-center">
@@ -108,7 +111,7 @@ export function GlucoseHistory({ userId, title = 'Histórico de Registros' }: Gl
                           </div>
                         )}
                       </div>
-                      
+
                       {record.note && (
                         <div className="mt-2 text-sm text-gray-600 italic">
                           "{record.note}"

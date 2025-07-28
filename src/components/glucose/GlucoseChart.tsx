@@ -1,3 +1,4 @@
+// ✅ GlucoseChart.tsx corrigido
 import React from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
 import { useGlucoseRecords } from '../../hooks/useGlucoseRecords'
@@ -9,10 +10,12 @@ interface GlucoseChartProps {
 }
 
 export function GlucoseChart({ userId, title = 'Tendência da Glicose' }: GlucoseChartProps) {
+  if (!userId) return null;
+
   const { records, loading } = useGlucoseRecords(userId)
 
   const chartData = records
-    .slice(0, 30) // Last 30 records
+    .slice(0, 30)
     .reverse()
     .map((record, index) => ({
       index: index + 1,
@@ -38,6 +41,7 @@ export function GlucoseChart({ userId, title = 'Tendência da Glicose' }: Glucos
     )
   }
 
+  
   if (records.length === 0) {
     return (
       <div className="card">
@@ -68,16 +72,8 @@ export function GlucoseChart({ userId, title = 'Tendência da Glicose' }: Glucos
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-            <XAxis 
-              dataKey="date" 
-              stroke="#6b7280"
-              fontSize={12}
-            />
-            <YAxis 
-              stroke="#6b7280"
-              fontSize={12}
-              domain={['dataMin - 20', 'dataMax + 20']}
-            />
+            <XAxis dataKey="date" stroke="#6b7280" fontSize={12} />
+            <YAxis stroke="#6b7280" fontSize={12} domain={['dataMin - 20', 'dataMax + 20']} />
             <Tooltip
               contentStyle={{
                 backgroundColor: 'white',
