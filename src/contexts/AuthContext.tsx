@@ -1,4 +1,5 @@
-// src/contexts/AuthContext.tsx
+// Arquivo: src/contexts/AuthContext.tsx (VERSÃO REAL RESTAURADA)
+
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
@@ -34,139 +35,74 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
 
-  
   const fetchProfile = async (userId: string) => {
-  try {
-    console.log('🔍 Buscando perfil do usuário com ID:', userId)
-    
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('user_id', userId)
-      .maybeSingle()
-
-    if (error) {
-      console.error('❌ Erro ao buscar perfil:', error)
-      throw error
+    try {
+      const { data, error, status } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .single()
+      if (error && status !== 406) { throw error }
+      setProfile(data)
+    } catch (err) {
+      setProfile(null)
     }
-
-    if (!data) {
-      console.warn('⚠️ Nenhum perfil encontrado para este usuário')
-    }
-
-    console.log('✅ Perfil carregado:', data)
-    setProfile(data)
-  } catch (err) {
-    console.error('❌ Exceção ao buscar perfil:', err)
-    setProfile(null)
   }
-}
-
 
   useEffect(() => {
-    const init = async () => {
+    setLoading(true)
+    const getInitialSession = async () => {
       try {
-        const { data, error } = await supabase.auth.getSession()
-        if (error) throw error
-        const session = data.session
-
+        const { data: { session } } = await supabase.auth.getSession()
         if (session?.user) {
           setUser(session.user)
           await fetchProfile(session.user.id)
-        } else {
-          setUser(null)
-          setProfile(null)
         }
       } catch (e) {
-        console.warn('Forçando refresh de sessão...')
-        try {
-          const { data } = await supabase.auth.refreshSession()
-          if (data.session?.user) {
-            setUser(data.session.user)
-            await fetchProfile(data.session.user.id)
-          } else {
-            setUser(null)
-            setProfile(null)
-          }
-        } catch (err) {
-          console.error('Erro ao forçar refresh:', err)
-          setUser(null)
-          setProfile(null)
-        }
+        console.error("Erro na verificação inicial da sessão:", e)
       } finally {
-        // 🔧 Garantir que o loading seja finalizado sempre
         setLoading(false)
       }
     }
-
-    init()
+    getInitialSession()
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
-        const currentUser = session?.user ?? null
-        setUser(currentUser)
-        if (currentUser) {
-          await fetchProfile(currentUser.id)
+        setUser(session?.user ?? null)
+        if (session?.user) {
+          await fetchProfile(session.user.id)
         } else {
           setProfile(null)
         }
-        setLoading(false)
       }
     )
-
-    return () => subscription.unsubscribe()
+    return () => { subscription.unsubscribe() }
   }, [])
-
-  // Timeout de segurança extra
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      if (loading) {
-        console.warn('⏱ Forçando fim do loading (timeout de segurança)')
-        setLoading(false)
-      }
-    }, 8000)
-    return () => clearTimeout(timeout)
-  }, [loading])
 
   const signUp = async (email: string, password: string, fullName: string, role: UserRole, diabetesType?: DiabetesType) => {
     const { data, error } = await supabase.auth.signUp({ email, password })
     if (error) throw error
     if (data.user) {
       const { error: insertError } = await supabase.from('profiles').insert({
-        user_id: data.user.id,
-        full_name: fullName,
-        role,
-        diabetes_type: role === 'patient' ? diabetesType || null : null,
+        user_id: data.user.id, full_name: fullName, role, diabetes_type: role === 'patient' ? diabetesType || null : null,
       })
       if (insertError) throw insertError
     }
   }
 
   const signIn = async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) throw error
-    const session = data.session
-    if (session?.user) {
-      setUser(session.user)
-      await fetchProfile(session.user.id)
-    }
   }
 
   const signOut = async () => {
-    await supabase.auth.signOut()
-    setUser(null)
-    setProfile(null)
-    setLoading(false)
+    const { error } = await supabase.auth.signOut()
+    if (error) throw error
   }
 
   const updateProfile = async (updates: Partial<Profile>) => {
     if (!user) throw new Error('Usuário não logado')
-    const { data, error } = await supabase
-      .from('profiles')
-      .update({ ...updates, updated_at: new Date().toISOString() })
-      .eq('user_id', user.id)
-      .select()
-      .single()
+    const { data, error } = await supabase.from('profiles').update({ ...updates, updated_at: new Date().toISOString() }).eq('user_id', user.id).select().single()
     if (error) throw error
     setProfile(data)
   }
@@ -179,16 +115,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return code
   }
 
-  const value: AuthContextType = {
-    user,
-    profile,
-    loading,
-    signUp,
-    signIn,
-    signOut,
-    updateProfile,
-    generateInvitationCode,
-  }
+  const value: AuthContextType = { user, profile, loading, signUp, signIn, signOut, updateProfile, generateInvitationCode }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
