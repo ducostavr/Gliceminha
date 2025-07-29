@@ -3,6 +3,8 @@ import { useAuth } from './contexts/AuthContext'
 import { supabase } from './lib/supabase'
 import type { User } from '@supabase/supabase-js'
 import { GlucoseForm } from './components/glucose/GlucoseForm.tsx';
+import { PDFDownloadLink } from '@react-pdf/renderer';
+import { ReportPDF } from './components/ReportPDF'; // Ajuste o caminho se o seu for diferente
 import { 
   Heart, 
   LogOut, 
@@ -1270,114 +1272,82 @@ function PatientsList({ guardianId, onSelectPatient, version, onListChange }: {
 }
 // Report Page Component
 function ReportPage({ userId, patientName, onBack }: { userId: string, patientName: string, onBack: () => void }) {
-  const [startDate, setStartDate] = useState('')
-  const [endDate, setEndDate] = useState('')
-  const [records, setRecords] = useState<GlucoseRecord[]>([])
-  const [filteredRecords, setFilteredRecords] = useState<GlucoseRecord[]>([])
-  const [loading, setLoading] = useState(false)
-  const [quickFilter, setQuickFilter] = useState('')
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [records, setRecords] = useState<GlucoseRecord[]>([]);
+  const [filteredRecords, setFilteredRecords] = useState<GlucoseRecord[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [quickFilter, setQuickFilter] = useState('');
 
   useEffect(() => {
     if (userId) {
-      fetchAllRecords()
+      fetchAllRecords();
     }
-  }, [userId])
+  }, [userId]);
 
   const fetchAllRecords = async () => {
     try {
-      setLoading(true)
+      setLoading(true);
       const { data, error } = await supabase
         .from('glucose_records')
         .select('*')
         .eq('user_id', userId)
-        .order('created_at', { ascending: false })
+        .order('created_at', { ascending: false });
 
-      if (error) throw error
-      setRecords(data || [])
+      if (error) throw error;
+      setRecords(data || []);
     } catch (error) {
-      console.error('Error fetching records:', error)
+      console.error('Error fetching records:', error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
+
+  const setTodayFilter = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const todayString = `${year}-${month}-${day}`;
+    
+    setStartDate(todayString);
+    setEndDate(todayString);
+    setQuickFilter('hoje');
+    generateReport(todayString, todayString);
+  };
 
   const setQuickFilterDays = (days: number) => {
-    const end = new Date()
-    const start = new Date()
-    start.setDate(start.getDate() - days)
+    const end = new Date();
+    const start = new Date();
+    start.setDate(start.getDate() - days);
     
-    setStartDate(start.toISOString().split('T')[0])
-    setEndDate(end.toISOString().split('T')[0])
-    setQuickFilter(`${days} dias`)
-  }
+    const startDateString = start.toISOString().split('T')[0];
+    const endDateString = end.toISOString().split('T')[0];
 
-  const generateReport = () => {
-    if (!startDate || !endDate) {
-      alert('Por favor, selecione as datas de início e fim')
-      return
+    setStartDate(startDateString);
+    setEndDate(endDateString);
+    setQuickFilter(`${days} dias`);
+    generateReport(startDateString, endDateString);
+  };
+
+  const generateReport = (startDt?: string, endDt?: string) => {
+    const finalStartDate = startDt || startDate;
+    const finalEndDate = endDt || endDate;
+
+    if (!finalStartDate || !finalEndDate) {
+      alert('Por favor, selecione as datas de início e fim');
+      return;
     }
-
-    const start = new Date(startDate)
-    const end = new Date(endDate)
-    end.setHours(23, 59, 59, 999)
 
     const filtered = records.filter(record => {
-      const recordDate = new Date(record.created_at)
-      return recordDate >= start && recordDate <= end && record.insulin_units !== null
-    })
+      const recordDateString = record.created_at.substring(0, 10);
+      return recordDateString >= finalStartDate &&
+             recordDateString <= finalEndDate &&
+             record.insulin_units !== null;
+    });
 
-    setFilteredRecords(filtered)
-  }
-
-  const downloadReport = () => {
-    if (filteredRecords.length === 0) {
-      alert('Nenhum registro de insulina encontrado no período selecionado')
-      return
-    }
-
-    const reportContent = generateReportContent()
-    const blob = new Blob([reportContent], { type: 'text/plain;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `relatorio-insulina-${patientName.replace(/\s+/g, '-')}-${startDate}-${endDate}.txt`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
-  }
-
-  const generateReportContent = () => {
-    const totalApplications = filteredRecords.length
-    const totalInsulin = filteredRecords.reduce((sum, record) => sum + (record.insulin_units || 0), 0)
-    const averageInsulin = totalApplications > 0 ? (totalInsulin / totalApplications).toFixed(1) : '0'
-
-    let content = `RELATÓRIO DE INSULINA\n`
-    content += `========================\n\n`
-    content += `Paciente: ${patientName}\n`
-    content += `Período: ${new Date(startDate).toLocaleDateString('pt-BR')} a ${new Date(endDate).toLocaleDateString('pt-BR')}\n`
-    content += `Gerado em: ${new Date().toLocaleString('pt-BR')}\n\n`
-    
-    content += `RESUMO:\n`
-    content += `- Total de aplicações: ${totalApplications}\n`
-    content += `- Total de insulina: ${totalInsulin.toFixed(1)} unidades\n`
-    content += `- Média por aplicação: ${averageInsulin} unidades\n\n`
-    
-    content += `DETALHES DAS APLICAÇÕES:\n`
-    content += `========================\n\n`
-
-    filteredRecords.forEach((record, index) => {
-      const date = new Date(record.created_at)
-      content += `${index + 1}. ${date.toLocaleDateString('pt-BR')} às ${date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}\n`
-      content += `   Glicose: ${record.glucose_level} mg/dL\n`
-      content += `   Insulina: ${record.insulin_units} unidades\n`
-      if (record.hba1c) content += `   HbA1c: ${record.hba1c}%\n`
-      if (record.note) content += `   Observação: ${record.note}\n`
-      content += `\n`
-    })
-
-    return content
-  }
+    setFilteredRecords(filtered);
+  };
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -1407,7 +1377,17 @@ function ReportPage({ userId, patientName, onBack }: { userId: string, patientNa
 
         <div className="mb-6">
           <p className="text-sm font-medium text-gray-700 mb-3">Filtros Rápidos:</p>
-          <div className="flex space-x-3">
+          <div className="flex flex-wrap gap-3">
+            <button
+              onClick={setTodayFilter}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                quickFilter === 'hoje'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Hoje
+            </button>
             <button
               onClick={() => setQuickFilterDays(7)}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
@@ -1450,8 +1430,8 @@ function ReportPage({ userId, patientName, onBack }: { userId: string, patientNa
               type="date"
               value={startDate}
               onChange={(e) => {
-                setStartDate(e.target.value)
-                setQuickFilter('')
+                setStartDate(e.target.value);
+                setQuickFilter('');
               }}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg"
             />
@@ -1464,8 +1444,8 @@ function ReportPage({ userId, patientName, onBack }: { userId: string, patientNa
               type="date"
               value={endDate}
               onChange={(e) => {
-                setEndDate(e.target.value)
-                setQuickFilter('')
+                setEndDate(e.target.value);
+                setQuickFilter('');
               }}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg"
             />
@@ -1473,7 +1453,7 @@ function ReportPage({ userId, patientName, onBack }: { userId: string, patientNa
         </div>
 
         <button
-          onClick={generateReport}
+          onClick={() => generateReport()}
           disabled={!startDate || !endDate || loading}
           className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg w-full disabled:opacity-50 flex items-center justify-center"
         >
@@ -1491,13 +1471,32 @@ function ReportPage({ userId, patientName, onBack }: { userId: string, patientNa
                 Registros de Insulina ({filteredRecords.length})
               </h2>
             </div>
-            <button
-              onClick={downloadReport}
-              className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg flex items-center"
+            
+            <PDFDownloadLink
+              document={
+                <ReportPDF 
+                  patientName={patientName}
+                  startDate={startDate}
+                  endDate={endDate}
+                  records={filteredRecords}
+                />
+              }
+              fileName={`relatorio-insulina-${patientName.replace(/\s+/g, '-')}.pdf`}
             >
-              <Download className="h-5 w-5 mr-2" />
-              Baixar Relatório
-            </button>
+              {({ loading }) => 
+                loading ? (
+                  <button className="bg-gray-500 text-white font-medium py-2 px-4 rounded-lg flex items-center" disabled>
+                    Gerando PDF...
+                  </button>
+                ) : (
+                  <button className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg flex items-center">
+                    <Download className="h-5 w-5 mr-2" />
+                    Baixar Relatório em PDF
+                  </button>
+                )
+              }
+            </PDFDownloadLink>
+
           </div>
 
           <div className="space-y-3 max-h-96 overflow-y-auto">
@@ -1526,7 +1525,7 @@ function ReportPage({ userId, patientName, onBack }: { userId: string, patientNa
         </div>
       )}
     </div>
-  )
+  );
 }
 
 // ========================================================================
@@ -1591,4 +1590,3 @@ function App() {
 }
 
 export default App;
-
