@@ -662,15 +662,23 @@ function GlucoseHistory({ userId, title = 'Histórico de Registros' }: { userId:
   const startEdit = (record: GlucoseRecord) => {
     setEditingRecord(record)
     const date = new Date(record.created_at)
-    setEditDate(date.toISOString().split('T')[0])
-    setEditTime(date.toTimeString().slice(0, 5))
+    setEditDate(date.toISOString().split('T')[0]) // Formato YYYY-MM-DD
+    setEditTime(date.toTimeString().slice(0, 5))   // Formato HH:MM
   }
 
+  const cancelEdit = () => {
+    setEditingRecord(null)
+    setEditDate('')
+    setEditTime('')
+  }
+  
+  // ✅ FUNÇÃO DE SALVAR CORRIGIDA
   const saveEdit = async () => {
     if (!editingRecord) return
 
     try {
-      const newDateTime = new Date(`${editDate}T${editTime}:00.000Z`)
+      // CORREÇÃO: Remove o 'Z' para usar o fuso horário local do navegador
+      const newDateTime = new Date(`${editDate}T${editTime}`);
       
       const { error } = await supabase
         .from('glucose_records')
@@ -680,17 +688,34 @@ function GlucoseHistory({ userId, title = 'Histórico de Registros' }: { userId:
       if (error) throw error
 
       setEditingRecord(null)
-      fetchRecords()
+      fetchRecords() // Atualiza a lista
     } catch (error) {
       console.error('Error updating record:', error)
+      alert('Não foi possível atualizar o registro.');
     }
   }
 
-  const cancelEdit = () => {
-    setEditingRecord(null)
-    setEditDate('')
-    setEditTime('')
-  }
+  // ✅ NOVA FUNÇÃO PARA EXCLUIR REGISTROS
+  const handleDelete = async (recordId: string) => {
+    // Pede confirmação antes de excluir
+    if (window.confirm('Tem certeza que deseja excluir este registro? Esta ação não pode ser desfeita.')) {
+      try {
+        const { error } = await supabase
+          .from('glucose_records')
+          .delete()
+          .eq('id', recordId);
+
+        if (error) throw error;
+        
+        fetchRecords(); // Atualiza a lista após a exclusão
+
+      } catch (error) {
+        console.error('Error deleting record:', error);
+        alert('Não foi possível excluir o registro.');
+      }
+    }
+  };
+
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
@@ -803,6 +828,7 @@ function GlucoseHistory({ userId, title = 'Histórico de Registros' }: { userId:
                           </div>
                         </div>
                       ) : (
+                         // ✅ BOTÕES DE EDITAR E EXCLUIR ADICIONADOS AQUI
                         <div className="flex items-center space-x-4 mb-2">
                           <span className="text-sm font-medium text-gray-900">
                             {formatDate(record.created_at)}
@@ -815,7 +841,15 @@ function GlucoseHistory({ userId, title = 'Histórico de Registros' }: { userId:
                             className="flex items-center text-blue-600 hover:text-blue-700 text-sm"
                           >
                             <Edit3 className="h-3 w-3 mr-1" />
-                            Editar Data
+                            Editar
+                          </button>
+                          <button
+                            onClick={() => handleDelete(record.id)}
+                            className="flex items-center text-red-600 hover:text-red-700 text-sm"
+                            title="Excluir registro"
+                          >
+                            <Trash2 className="h-3 w-3 mr-1" />
+                            Excluir
                           </button>
                         </div>
                       )}
