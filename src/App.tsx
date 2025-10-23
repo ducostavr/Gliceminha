@@ -632,8 +632,11 @@ function GlucoseHistory({ userId, title = 'Histórico de Registros' }: { userId:
   const [records, setRecords] = useState<GlucoseRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [editingRecord, setEditingRecord] = useState<GlucoseRecord | null>(null)
+  
+  // Estados para os campos de edição
   const [editDate, setEditDate] = useState('')
   const [editTime, setEditTime] = useState('')
+  const [editInsulin, setEditInsulin] = useState('') // <-- NOVO ESTADO
 
   useEffect(() => {
     if (userId) {
@@ -664,25 +667,37 @@ function GlucoseHistory({ userId, title = 'Histórico de Registros' }: { userId:
     const date = new Date(record.created_at)
     setEditDate(date.toISOString().split('T')[0]) // Formato YYYY-MM-DD
     setEditTime(date.toTimeString().slice(0, 5))   // Formato HH:MM
+    
+    setEditInsulin(record.insulin_units ? String(record.insulin_units) : '')
   }
 
   const cancelEdit = () => {
     setEditingRecord(null)
     setEditDate('')
     setEditTime('')
+    setEditInsulin('') 
   }
   
-  // ✅ FUNÇÃO DE SALVAR CORRIGIDA
   const saveEdit = async () => {
     if (!editingRecord) return
 
     try {
-      // CORREÇÃO: Remove o 'Z' para usar o fuso horário local do navegador
       const newDateTime = new Date(`${editDate}T${editTime}`);
       
+      const newInsulin = editInsulin ? parseFloat(editInsulin) : null;
+      
+      // Validação corrigida para TypeScript
+      if (newInsulin !== null && (isNaN(newInsulin) || newInsulin < 0)) {
+        alert('O valor da insulina deve ser um número positivo.');
+        return;
+      }
+
       const { error } = await supabase
         .from('glucose_records')
-        .update({ created_at: newDateTime.toISOString() })
+        .update({ 
+          created_at: newDateTime.toISOString(),
+          insulin_units: newInsulin 
+        })
         .eq('id', editingRecord.id)
 
       if (error) throw error
@@ -695,9 +710,7 @@ function GlucoseHistory({ userId, title = 'Histórico de Registros' }: { userId:
     }
   }
 
-  // ✅ NOVA FUNÇÃO PARA EXCLUIR REGISTROS
   const handleDelete = async (recordId: string) => {
-    // Pede confirmação antes de excluir
     if (window.confirm('Tem certeza que deseja excluir este registro? Esta ação não pode ser desfeita.')) {
       try {
         const { error } = await supabase
@@ -707,7 +720,7 @@ function GlucoseHistory({ userId, title = 'Histórico de Registros' }: { userId:
 
         if (error) throw error;
         
-        fetchRecords(); // Atualiza a lista após a exclusão
+        fetchRecords(); 
 
       } catch (error) {
         console.error('Error deleting record:', error);
@@ -810,7 +823,26 @@ function GlucoseHistory({ userId, title = 'Histórico de Registros' }: { userId:
                               className="px-2 py-1 border border-gray-300 rounded text-sm"
                             />
                           </div>
-                          <div className="flex space-x-2">
+                          
+                          {/* <-- NOVO CAMPO DE INSULINA --> */}
+                          <div className="mt-2">
+                            <label className="text-xs font-medium text-gray-600 flex items-center">
+                              <Syringe className="h-3 w-3 mr-1" />
+                              Insulina (unid)
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.5"
+                              value={editInsulin}
+                              onChange={(e) => setEditInsulin(e.target.value)}
+                              className="px-2 py-1 border border-gray-300 rounded text-sm w-full"
+                              placeholder="Ex: 10"
+                            />
+                          </div>
+                          {/* <-- FIM DO NOVO CAMPO --> */}
+                          
+                          <div className="flex space-x-2 mt-2">
                             <button
                               onClick={saveEdit}
                               className="flex items-center px-2 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700"
@@ -828,7 +860,6 @@ function GlucoseHistory({ userId, title = 'Histórico de Registros' }: { userId:
                           </div>
                         </div>
                       ) : (
-                         // ✅ BOTÕES DE EDITAR E EXCLUIR ADICIONADOS AQUI
                         <div className="flex items-center space-x-4 mb-2">
                           <span className="text-sm font-medium text-gray-900">
                             {formatDate(record.created_at)}
@@ -1376,10 +1407,8 @@ function ReportPage({ userId, patientName, onBack }: { userId: string, patientNa
     const filtered = records.filter(record => {
       const recordDateString = record.created_at.substring(0, 10);
       return recordDateString >= finalStartDate &&
-             recordDateString <= finalEndDate &&
-             record.insulin_units !== null;
+             recordDateString <= finalEndDate;
     });
-
     setFilteredRecords(filtered);
   };
 

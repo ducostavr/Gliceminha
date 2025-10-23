@@ -1,15 +1,16 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-
-// 1. Importamos o plugin do PWA
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
-  // 2. Adicionamos o plugin do PWA à lista
   plugins: [
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      
+      // ✅ ADICIONADO: Garante que seus ícones principais sejam cacheados
+      includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
+      
       manifest: {
         name: 'Gliceminha',
         short_name: 'Gliceminha',
@@ -21,14 +22,21 @@ export default defineConfig({
         start_url: '/',
         icons: [
           {
-            src: 'pwa-192x192.png',
+            src: 'pwa-192x192.png', // Já existe no seu /public
             sizes: '192x192',
             type: 'image/png'
           },
           {
-            src: 'pwa-512x512.png',
+            src: 'pwa-512x512.png', // Já existe no seu /public
             sizes: '512x512',
             type: 'image/png'
+          },
+          {
+            // ✅ ADICIONADO: O novo ícone maskable
+            src: 'pwa-maskable-512x512.png', // Adicione este arquivo ao /public
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable'
           }
         ]
       }
