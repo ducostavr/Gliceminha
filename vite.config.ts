@@ -31,13 +31,7 @@ export default defineConfig({
             sizes: '512x512',
             type: 'image/png'
           },
-          {
-            // ✅ ADICIONADO: O novo ícone maskable
-            src: 'pwa-maskable-512x512.png', // Adicione este arquivo ao /public
-            sizes: '512x512',
-            type: 'image/png',
-            purpose: 'maskable'
-          }
+          
         ]
       }
     })
