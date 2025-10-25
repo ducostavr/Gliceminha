@@ -1357,7 +1357,7 @@ function ReportPage({ userId, patientName, onBack }: { userId: string, patientNa
         .from('glucose_records')
         .select('*')
         .eq('user_id', userId)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: true });
 
       if (error) throw error;
       setRecords(data || []);
@@ -1564,7 +1564,7 @@ function ReportPage({ userId, patientName, onBack }: { userId: string, patientNa
 
           </div>
 
-          <div className="space-y-3 max-h-96 overflow-y-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto">
             {filteredRecords.map((record) => (
               <div key={record.id} className="border border-gray-200 rounded-lg p-4">
                 <div className="flex items-center justify-between">

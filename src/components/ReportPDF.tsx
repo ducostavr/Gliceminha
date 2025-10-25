@@ -19,16 +19,16 @@ interface ReportPDFProps {
   records: GlucoseRecord[];
 }
 
-// Criação dos estilos para o PDF (similar a CSS)
+// Criação dos estilos para o PDF
 const styles = StyleSheet.create({
   page: {
     fontFamily: 'Helvetica',
-    fontSize: 11,
+    fontSize: 10, 
     paddingTop: 30,
     paddingLeft: 40,
     paddingRight: 40,
     paddingBottom: 30,
-    lineHeight: 1.5,
+    lineHeight: 1.4,
   },
   title: {
     fontSize: 24,
@@ -49,21 +49,35 @@ const styles = StyleSheet.create({
     fontFamily: 'Helvetica-Bold',
     textDecoration: 'underline',
   },
+  // Container principal para as duas colunas
+  twoColumnContainer: {
+    display: 'flex',
+    flexDirection: 'row',
+    width: '100%',
+    marginTop: 5,
+  },
+  // Estilo para cada coluna
+  column: {
+    width: '50%',
+    padding: '0 5px',
+  },
   recordContainer: {
     borderBottomWidth: 1,
     borderBottomColor: '#cccccc',
     paddingBottom: 5,
     marginBottom: 5,
+    // Garante que um registro não quebre entre páginas
+    breakInside: 'avoid', 
   },
   recordText: {
-    fontSize: 11,
+    fontSize: 10,
   },
   recordDate: {
     fontFamily: 'Helvetica-Bold',
+    fontSize: 11,
   },
 });
 
-// Este é o componente que define a estrutura do seu PDF
 export const ReportPDF = ({ patientName, startDate, endDate, records }: ReportPDFProps) => {
   // Cálculos para o resumo
   const totalApplications = records.length;
@@ -71,9 +85,34 @@ export const ReportPDF = ({ patientName, startDate, endDate, records }: ReportPD
   const averageInsulin = totalApplications > 0 ? (totalInsulin / totalApplications).toFixed(1) : '0';
 
   const formatDate = (dateString: string) => {
-    // Adiciona o fuso horário UTC para evitar problemas
     return new Date(dateString).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
   }
+  
+  // ✅ AQUI ESTÁ A LÓGICA CORRETA:
+  // 1. Divide os registros em duas metades exatas
+  const midpoint = Math.ceil(records.length / 2);
+  const leftColumnRecords = records.slice(0, midpoint);
+  const rightColumnRecords = records.slice(midpoint);
+
+  // Função para renderizar um único registro
+  const renderRecord = (record: GlucoseRecord, index: number) => {
+    const date = new Date(record.created_at);
+    // Usamos o ID do registro (created_at) como chave para garantir unicidade
+    return (
+      <View key={record.created_at + index} style={styles.recordContainer}>
+        <Text style={styles.recordDate}>
+          {/* A numeração é o índice + 1 */}
+          {index + 1}. {date.toLocaleDateString('pt-BR')} às {date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+        </Text>
+        <Text style={styles.recordText}>   - Glicose: {record.glucose_level} mg/dL</Text>
+        <Text style={styles.recordText}>
+          {'   - Insulina: '}
+          {record.insulin_units !== null ? `${record.insulin_units} unidades` : 'N/A'}
+        </Text>
+        {record.note && <Text style={styles.recordText}>   - Observação: "{record.note}"</Text>}
+      </View>
+    );
+  };
 
   return (
     <Document>
@@ -88,19 +127,24 @@ export const ReportPDF = ({ patientName, startDate, endDate, records }: ReportPD
         <Text>- Média por aplicação: {averageInsulin} unidades</Text>
 
         <Text style={styles.sectionTitle}>Detalhes das Aplicações</Text>
-        {records.map((record, index) => {
-          const date = new Date(record.created_at);
-          return (
-            <View key={index} style={styles.recordContainer}>
-              <Text style={styles.recordDate}>
-                {index + 1}. {date.toLocaleDateString('pt-BR')} às {date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-              </Text>
-              <Text style={styles.recordText}>   - Glicose: {record.glucose_level} mg/dL</Text>
-              <Text style={styles.recordText}>   - Insulina: {record.insulin_units} unidades</Text>
-              {record.note && <Text style={styles.recordText}>   - Observação: "{record.note}"</Text>}
-            </View>
-          );
-        })}
+        
+        {/* ✅ LÓGICA DE RENDERIZAÇÃO CORRETA: */}
+        <View style={styles.twoColumnContainer}>
+          
+          {/* 1. Renderiza a Coluna da Esquerda (itens 1-24) PRIMEIRO */}
+          <View style={styles.column}>
+            {leftColumnRecords.map((record, index) => renderRecord(record, index))}
+          </View>
+
+          {/* 2. Renderiza a Coluna da Direita (itens 25-48) DEPOIS */}
+          <View style={styles.column}>
+            {rightColumnRecords.map((record, index) => 
+              // A numeração continua de onde a primeira coluna parou
+              renderRecord(record, index + midpoint)
+            )}
+          </View>
+        </View>
+        
       </Page>
     </Document>
   );
