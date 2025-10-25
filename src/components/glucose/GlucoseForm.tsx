@@ -1,7 +1,19 @@
+// ✅ GlucoseForm.tsx CORRIGIDO
 import React, { useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useGlucoseRecords } from '../../hooks/useGlucoseRecords'
 import { Plus, Activity, Syringe, TestTube } from 'lucide-react'
+
+// OPÇÕES DE REFEIÇÃO DEFINIDAS
+const mealOptions = [
+  'Café da Manhã',
+  'Colação',
+  'Almoço',
+  'Lanche',
+  'Jantar',
+  'Ceia',
+  'Outros'
+];
 
 export function GlucoseForm() {
   const [glucoseLevel, setGlucoseLevel] = useState('')
@@ -63,9 +75,9 @@ export function GlucoseForm() {
       setSuccess(true)
       
       setTimeout(() => setSuccess(false), 3000)
-    } catch (err: any) {
-      setError(err.message || 'Erro ao salvar registro')
-    } finally {
+    // ✅ LINHA CORRIGIDA
+    } catch (err: any) { setError(err.message || 'Erro ao salvar registro'); }
+    finally {
       setLoading(false)
     }
   }
@@ -156,6 +168,7 @@ export function GlucoseForm() {
           />
         </div>
 
+        {/* SEÇÃO DE OBSERVAÇÃO ATUALIZADA */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Observação (opcional)
@@ -165,9 +178,16 @@ export function GlucoseForm() {
             value={note}
             onChange={(e) => setNote(e.target.value)}
             className="input-field"
-            placeholder="Ex: antes do café da manhã, após exercício"
+            placeholder="Selecione ou digite (ex: após exercício)"
             maxLength={200}
+            list="meal-options" // Conecta este input ao datalist
           />
+          {/* Adiciona la lista de sugestões */}
+          <datalist id="meal-options">
+            {mealOptions.map((option) => (
+              <option key={option} value={option} />
+            ))}
+          </datalist>
         </div>
 
         <button
