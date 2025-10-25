@@ -1409,6 +1409,8 @@ function ReportPage({ userId, patientName, onBack }: { userId: string, patientNa
       return recordDateString >= finalStartDate &&
              recordDateString <= finalEndDate;
     });
+    setStartDate(finalStartDate);
+    setEndDate(finalEndDate);
     setFilteredRecords(filtered);
   };
 
